@@ -14,5 +14,7 @@ namespace TimeLogger.Models.ViewModels
         [Required]
         [Range(1, 100)]
         public int Percentage { get; set; }
+
+        public IEnumerable<TimeLogViewModel>? TimeLogs { get; set; }
     }
 }

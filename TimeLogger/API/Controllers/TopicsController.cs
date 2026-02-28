@@ -1,14 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using SkillAllocationTracker.Application.DTOs;
-using SkillAllocationTracker.Application.Services;
 using SkillAllocationTracker.Application.Interfaces;
+using SkillAllocationTracker.Application.Services;
 using SkillAllocationTracker.Domain.Entities;
-using TimeLogger.Models.ViewModels;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Collections.Generic;
+using TimeLogger.Models.ViewModels;
 
 namespace TimeLogger.API.Controllers
 {
@@ -102,7 +102,34 @@ namespace TimeLogger.API.Controllers
         {
             var t = await _topicService.GetByIdAsync(id);
             if (t == null) return NotFound();
+
+            // populate topic base model
             var model = new CreateEditTopicModel { Id = t.Id, Name = t.Name, Percentage = t.Percentage };
+
+            // load timelogs for this topic
+            var logs = (await _uow.TimeLogRepository.FindAsync(l => l.TopicId == id)).ToList();
+
+            model.TimeLogs = logs.Select(l => new TimeLogViewModel
+            {
+                TopicId = l.TopicId,
+                DurationMinutes = l.DurationMinutes,
+                Note = l.Note,
+                LogDate = l.LogDate.ToLocalTime(),
+                // include Id in a hidden property via dynamic binding -- TimeLogViewModel doesn't have Id property; add via ViewData or create new model if needed
+            }).ToList();
+
+            // If you need the log Id on actions, we will use a small anonymous list for the view.
+            // For convenience pass a list of simple objects to the ViewBag containing Id and fields.
+            ViewBag.TimeLogRows = logs.Select(l => new
+            {
+                l.Id,
+                l.DurationMinutes,
+                l.Note,
+                LogDateLocal = l.LogDate.ToLocalTime().ToString("yyyy-MM-ddTHH:mm"),
+                l.TopicId,
+                l.CreatedAt
+            }).ToList();
+
             return View("CreateEdit", model);
         }
 
@@ -175,7 +202,7 @@ namespace TimeLogger.API.Controllers
                 await _uow.SaveChangesAsync();
 
                 TempData["Success"] = "Time log added.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Edit), new { id = model.TopicId });
             }
             catch (Exception ex)
             {
@@ -184,6 +211,69 @@ namespace TimeLogger.API.Controllers
                 model.Topics = topics;
                 return View(model);
             }
+        }
+
+        // GET partial for edit timelog (AJAX)
+        [HttpGet]
+        public async Task<IActionResult> EditTimeLog(Guid id)
+        {
+            var tl = await _uow.TimeLogRepository.GetByIdAsync(id);
+            if (tl == null) return NotFound();
+
+            var model = new TimeLogViewModel
+            {
+                TopicId = tl.TopicId,
+                DurationMinutes = tl.DurationMinutes,
+                Note = tl.Note,
+                LogDate = tl.LogDate.ToLocalTime()
+            };
+
+            ViewBag.TimeLogId = tl.Id;
+            return PartialView("_EditTimeLogPartial", model);
+        }
+
+        // POST edit timelog
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditTimeLog(Guid id, TimeLogViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                ViewBag.TimeLogId = id;
+                return PartialView("_EditTimeLogPartial", model);
+            }
+
+            var existing = await _uow.TimeLogRepository.GetByIdAsync(id);
+            if (existing == null) return NotFound();
+
+            existing.DurationMinutes = model.DurationMinutes;
+            existing.Note = model.Note;
+            existing.LogDate = model.LogDate.ToUniversalTime();
+
+            _uow.TimeLogRepository.Update(existing);
+            await _uow.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Edit), new { id = existing.TopicId });
+        }
+
+        // Delete timelog
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteTimeLog(Guid id, Guid topicId)
+        {
+            var existing = await _uow.TimeLogRepository.GetByIdAsync(id);
+            if (existing != null)
+            {
+                _uow.TimeLogRepository.Remove(existing);
+                await _uow.SaveChangesAsync();
+                TempData["Success"] = "Time log deleted.";
+            }
+            else
+            {
+                TempData["Error"] = "Time log not found.";
+            }
+
+            return RedirectToAction(nameof(Edit), new { id = topicId });
         }
 
         public async Task<IActionResult> Summary()
@@ -233,7 +323,7 @@ namespace TimeLogger.API.Controllers
             return View(model);
         }
 
-        // New detailed analytics page
+        // AnalyticsDetailed remains unchanged
         public async Task<IActionResult> AnalyticsDetailed()
         {
             var weekly = (await _uow.WeeklyConfigRepository.GetAllAsync()).FirstOrDefault();
@@ -241,7 +331,6 @@ namespace TimeLogger.API.Controllers
             var topics = (await _topicService.GetAllAsync()).ToList();
             var logs = (await _uow.TimeLogRepository.GetAllAsync()).ToList();
 
-            // current week
             var ci = CultureInfo.InvariantCulture;
             var calendar = ci.Calendar;
             var rule = CalendarWeekRule.FirstFourDayWeek;
@@ -261,7 +350,6 @@ namespace TimeLogger.API.Controllers
                 return Math.Round(minutes / 60.0, 2);
             }).ToArray();
 
-            // detect under/over performing (threshold: 10% deviation)
             var under = new List<(string Name, double Planned, double Actual, double Eff)>();
             var over = new List<(string Name, double Planned, double Actual, double Eff)>();
 
@@ -275,7 +363,6 @@ namespace TimeLogger.API.Controllers
                 else if (a > p * 1.1) over.Add((topics[i].Name, p, a, eff));
             }
 
-            // per-topic trend for last 8 weeks
             var weeks = Enumerable.Range(0, 8).Select(i =>
             {
                 var dt = DateTime.UtcNow.AddDays(-7 * i);
@@ -302,13 +389,13 @@ namespace TimeLogger.API.Controllers
                 trendValuesPerTopic.Add(values);
             }
 
-            var model = new AnalyticsDetailedViewModel
+            var model = new Models.ViewModels.AnalyticsDetailedViewModel
             {
                 TopicNames = topicNames,
                 Planned = planned,
                 ActualThisWeek = actualThisWeek,
-                UnderPerforming = under.Select(x => new UnderOverItem { Name = x.Name, Planned = x.Planned, Actual = x.Actual, Efficiency = x.Eff }).ToList(),
-                OverPerforming = over.Select(x => new UnderOverItem { Name = x.Name, Planned = x.Planned, Actual = x.Actual, Efficiency = x.Eff }).ToList(),
+                UnderPerforming = under.Select(x => new Models.ViewModels.UnderOverItem { Name = x.Name, Planned = x.Planned, Actual = x.Actual, Efficiency = x.Eff }).ToList(),
+                OverPerforming = over.Select(x => new Models.ViewModels.UnderOverItem { Name = x.Name, Planned = x.Planned, Actual = x.Actual, Efficiency = x.Eff }).ToList(),
                 TrendLabels = trendLabels,
                 TrendValuesPerTopic = trendValuesPerTopic
             };

@@ -1,0 +1,24 @@
+﻿@model TimeLogger.Models.ViewModels.TimeLogViewModel
+
+<form method="post" asp-action="EditTimeLog" asp-route-id="@(ViewBag.TimeLogId ?? Guid.Empty)">
+    <input type="hidden" name="TopicId" value="@Model.TopicId" />
+    <div class="mb-3">
+        <label class="form-label">Duration (minutes)</label>
+        <input name="DurationMinutes" value="@Model.DurationMinutes" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Log Date</label>
+        <input name="LogDate" type="datetime-local" class="form-control" value="@(Model.LogDate.ToString("yyyy-MM-ddTHH:mm"))" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Note</label>
+        <textarea name="Note" class="form-control">@Model.Note</textarea>
+    </div>
+
+    <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary me-2">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    </div>
+</form>

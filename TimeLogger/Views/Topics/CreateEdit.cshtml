@@ -2,6 +2,7 @@
 @{
     var isEdit = Model?.Id != Guid.Empty;
     ViewData["Title"] = isEdit ? "Edit Topic" : "Create Topic";
+    var timeLogRows = ViewBag.TimeLogRows as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
 }
 
 <div class="container py-4">
@@ -27,8 +28,82 @@
         <button class="btn btn-primary">Save</button>
         <a class="btn btn-secondary" asp-action="Index">Cancel</a>
     </form>
+
+    @if (isEdit)
+    {
+        <hr />
+        <h4 class="mt-4">Time logs</h4>
+
+        <div class="mb-2">
+            <a class="btn btn-sm btn-success" asp-action="AddTimeLog" asp-route-topicId="@Model.Id">Add Time Log</a>
+        </div>
+
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th>Log Date</th>
+                    <th>Duration (min)</th>
+                    <th>Note</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in timeLogRows)
+                {
+                    <tr>
+                        <td>@r.LogDateLocal</td>
+                        <td>@r.DurationMinutes</td>
+                        <td>@r.Note</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary edit-log" data-url="@Url.Action("EditTimeLog", "Topics", new { id = r.Id })">Edit</button>
+
+                            <form method="post" asp-action="DeleteTimeLog" class="d-inline">
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <input type="hidden" name="topicId" value="@r.TopicId" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this time log?');">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+</div>
+
+<!-- Modal placeholder -->
+<div class="modal fade" id="editTimeLogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Time Log</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- partial content loaded via AJAX -->
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(function () {
+            // load edit partial into modal
+            $('.edit-log').on('click', function (e) {
+                e.preventDefault();
+                var url = $(this).data('url');
+                $('#editTimeLogModal .modal-body').html('<div class="text-center py-4">Loading...</div>');
+                $('#editTimeLogModal').modal('show');
+                $.get(url).done(function (html) {
+                    $('#editTimeLogModal .modal-body').html(html);
+                }).fail(function () {
+                    $('#editTimeLogModal .modal-body').html('<div class="text-danger">Failed to load.</div>');
+                });
+            });
+
+            // optional: after modal form submit the server will redirect to Edit action
+        });
+    </script>
 }
