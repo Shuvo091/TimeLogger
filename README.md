@@ -1,7 +1,7 @@
-# Skill Allocation Tracker — TimeLogger
+# Skill Allocation Tracker ï¿½ TimeLogger
 
 A full-stack, Clean-Architecture web app for tracking weekly upskilling strategy and execution.  
-Purpose: help you plan topic allocations, log study time, and measure execution vs plan with clear analytics — useful for personal growth, interviews preparation, and keeping consistent momentum.
+Purpose: help you plan topic allocations, log study time, and measure execution vs plan with clear analytics ï¿½ useful for personal growth, interviews preparation, and keeping consistent momentum.
 
 ## TL;DR
 - Backend: .NET 10, Entity Framework Core, MSSQL Server, JWT auth, Serilog, FluentValidation
@@ -42,6 +42,9 @@ Purpose: help you plan topic allocations, log study time, and measure execution 
   - KPI cards: planned vs logged, completion %, most focused topic
   - Charts: allocation pie, planned vs actual bar, weekly trend line
   - Advanced analytics: efficiency score, under/over-performing detection, trends per topic
+- Notes
+  - Scope: Add notes by Day, Week and Month.
+  - CRUD: Add, edit and delete notes
 - UX
   - Bootstrap layout, responsive pages, modal UX for timelog editing
 - Backend
@@ -54,23 +57,23 @@ Purpose: help you plan topic allocations, log study time, and measure execution 
 
 ## Repo layout (high-level)
 - `TimeLogger/` (solution root)
-  - `API/` — Program.cs, controllers for API, app host
-  - `Infrastructure/` — EF `AppDbContext`, repositories, UnitOfWork
-  - `Application/` — services, DTOs, validators
-  - `Domain/` — entities (Topic, WeeklyConfig, TimeLog)
-  - `Views/` — `Topics`, shared layout, partials (CSHTML)
-  - `wwwroot/` — css/js/site assets
-  - `Properties/launchSettings.json` — local launch profiles
+  - `API/` ï¿½ Program.cs, controllers for API, app host
+  - `Infrastructure/` ï¿½ EF `AppDbContext`, repositories, UnitOfWork
+  - `Application/` ï¿½ services, DTOs, validators
+  - `Domain/` ï¿½ entities (Topic, WeeklyConfig, TimeLog)
+  - `Views/` ï¿½ `Topics`, shared layout, partials (CSHTML)
+  - `wwwroot/` ï¿½ css/js/site assets
+  - `Properties/launchSettings.json` ï¿½ local launch profiles
 
 Key files:
-- `API/Program.cs` — app startup, DI, Serilog, JWT setup, routing (MVC + API)
-- `Infrastructure/DbContexts/AppDbContext.cs` — EF model configuration
-- `API/SeedData.cs` — initial topics & weekly config
-- `Views/Topics/*` — Index, CreateEdit, AddTimeLog, Summary, AnalyticsDetailed, partials
+- `API/Program.cs` ï¿½ app startup, DI, Serilog, JWT setup, routing (MVC + API)
+- `Infrastructure/DbContexts/AppDbContext.cs` ï¿½ EF model configuration
+- `API/SeedData.cs` ï¿½ initial topics & weekly config
+- `Views/Topics/*` ï¿½ Index, CreateEdit, AddTimeLog, Summary, AnalyticsDetailed, partials
 
 ---
 
-## Quickstart — local development
+## Quickstart ï¿½ local development
 
 Prereqs:
 - .NET 10 SDK
@@ -99,7 +102,7 @@ Prereqs:
    - On first run the app also calls `SeedData.EnsureSeedData(...)` to insert example topics and weekly config.
 
 5. Run
-   - From VS: select the web project profile (IIS Express or Kestrel `https`) — launch URL can be set to `Topics` in `Properties/launchSettings.json`.
+   - From VS: select the web project profile (IIS Express or Kestrel `https`) ï¿½ launch URL can be set to `Topics` in `Properties/launchSettings.json`.
    - Or CLI:
      - cd TimeLogger/API
      - dotnet run
@@ -152,7 +155,7 @@ Prereqs:
 This project was created to help me build and sustain a disciplined upskilling habit. I wanted:
 - A simple way to commit weekly study plans (topic + percent) and measure what actually happened.
 - Clear metrics to spot where I under-invest or over-invest time.
-- An artifact that demonstrates architecting a small SaaS-style app with Clean Architecture, EF Core, logging and analytics — useful in interviews and to track my own progress.
+- An artifact that demonstrates architecting a small SaaS-style app with Clean Architecture, EF Core, logging and analytics ï¿½ useful in interviews and to track my own progress.
 
 ---
 
