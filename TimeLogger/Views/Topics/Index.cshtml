@@ -1,0 +1,47 @@
+@model IEnumerable<TimeLogger.Models.ViewModels.TopicViewModel>
+    @{
+        ViewData["Title"] = "Topics";
+        var totalHours = ViewBag.TotalWeeklyHours ?? 0;
+    }
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <div class="container py-4">
+        <div class="d-flex justify-content-between mb-3">
+            <h2>Topics</h2>
+            <div>
+                <a class="btn btn-primary" asp-action="Create">Add Topic</a>
+                <a class="btn btn-secondary" asp-action="AddTimeLog">Add Time Log</a>
+                <a class="btn btn-info" asp-action="Summary">Summary</a>
+                <a class="btn btn-warning" asp-action="Analytics">Analytics</a>
+            </div>
+        </div>
+
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Allocation %</th>
+                    <th>Weekly Hours</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model)
+                {
+                    <tr>
+                        <td>@t.Name</td>
+                        <td>@t.Percentage</td>
+                        <td>@t.CalculatedWeeklyHours</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@t.Id">Edit</a>
+                            <form asp-action="Delete" asp-route-id="@t.Id" method="post" class="d-inline"
+                                  onsubmit="return confirm('Delete topic @t.Name?');">
+                                <button class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                            <a class="btn btn-sm btn-outline-success" asp-action="AddTimeLog" asp-route-topicId="@t.Id">Add Log</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>

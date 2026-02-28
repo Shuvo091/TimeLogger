@@ -1,0 +1,107 @@
+using System.Text;
+using SkillAllocationTracker.Infrastructure.DbContexts;
+using SkillAllocationTracker.Infrastructure;
+using SkillAllocationTracker.Application.Services;
+using SkillAllocationTracker.Application.Validators;
+using SkillAllocationTracker.API.Middleware;
+using Serilog;
+using Microsoft.EntityFrameworkCore;
+using SkillAllocationTracker.Application.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using FluentValidation.AspNetCore;
+using FluentValidation;
+using SkillAllocationTracker.API;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+// Configuration
+var configuration = builder.Configuration;
+var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Server=(localdb)\\mssqllocaldb;Database=SkillAllocDb;Trusted_Connection=True;";
+
+// EF Core
+builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString));
+
+// UnitOfWork / Repositories / Services
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<ITopicService, TopicService>();
+
+// Authentication - JWT (symmetric)
+var jwtKey = configuration["Jwt:Key"] ?? "REPLACE_WITH_A_STRONG_KEY";
+var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = true;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters()
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ClockSkew = TimeSpan.FromMinutes(1)
+    };
+});
+
+// MVC, Razor pages, Swagger, Validation
+// Use AddControllersWithViews so MVC views (cshtml) are served.
+builder.Services.AddControllersWithViews().AddJsonOptions(opts => { opts.JsonSerializerOptions.PropertyNamingPolicy = null; });
+builder.Services.AddRazorPages();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<TopicDtoValidator>();
+
+var app = builder.Build();
+
+// Ensure DB created and seed
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+    await SeedData.EnsureSeedData(scope.ServiceProvider);
+}
+
+app.UseSerilogRequestLogging();
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles(); // enable serving Bootstrap, scripts, css from wwwroot
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Keep attribute-routed API controllers
+app.MapControllers();
+
+// Map controller routes and default route -> Topics page (root -> TopicsMvcController.Index)
+// If your controller class is named TopicsMvcController, default controller token is "TopicsMvc".
+// To route root "/" to Topics list, we set the default controller to "TopicsMvc".
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=TopicsMvc}/{action=Index}/{id?}"
+);
+
+// If you also have Razor Pages, map them
+app.MapRazorPages();
+
+app.Run();
