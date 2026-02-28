@@ -1,0 +1,46 @@
+﻿Views/Notes/Edit.cshtml
+@model TimeLogger.Models.NoteEditViewModel
+@{
+    ViewData["Title"] = "Edit Note";
+}
+
+<div class="container py-4">
+    <h2>Edit Note</h2>
+
+    <form method="post" asp-action="Edit" asp-route-id="@Model.Id" class="row g-3">
+        <input type="hidden" asp-for="Id" />
+        <div class="col-md-6">
+            <label class="form-label">Title</label>
+            <input asp-for="Title" class="form-control" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Scope</label>
+            <select asp-for="Scope" class="form-select">
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Occurrence Date</label>
+            <input asp-for="OccurrenceDate" type="date" class="form-control" value="@Model.OccurrenceDate.ToLocalTime().ToString("yyyy-MM-dd")" />
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">Body</label>
+            <textarea asp-for="Body" class="form-control" rows="6"></textarea>
+        </div>
+
+        <div class="col-12">
+            <button class="btn btn-primary">Save</button>
+            <a class="btn btn-secondary" asp-action="Index">Cancel</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

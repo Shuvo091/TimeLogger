@@ -13,6 +13,7 @@ namespace SkillAllocationTracker.Infrastructure
         public IGenericRepository<Topic> TopicRepository { get; }
         public IGenericRepository<WeeklyConfig> WeeklyConfigRepository { get; }
         public IGenericRepository<TimeLog> TimeLogRepository { get; }
+        public IGenericRepository<Note> NoteRepository { get; }
 
         public UnitOfWork(AppDbContext db)
         {
@@ -20,6 +21,7 @@ namespace SkillAllocationTracker.Infrastructure
             TopicRepository = new GenericRepository<Topic>(_db);
             WeeklyConfigRepository = new GenericRepository<WeeklyConfig>(_db);
             TimeLogRepository = new GenericRepository<TimeLog>(_db);
+            NoteRepository = new GenericRepository<Note>(_db);
         }
 
         public async Task<int> SaveChangesAsync() => await _db.SaveChangesAsync();

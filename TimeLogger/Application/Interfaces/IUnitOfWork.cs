@@ -9,6 +9,7 @@ namespace SkillAllocationTracker.Application.Interfaces
         IGenericRepository<Topic> TopicRepository { get; }
         IGenericRepository<WeeklyConfig> WeeklyConfigRepository { get; }
         IGenericRepository<TimeLog> TimeLogRepository { get; }
+        IGenericRepository<Note> NoteRepository { get; }
         Task<int> SaveChangesAsync();
     }
 }
