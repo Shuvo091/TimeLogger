@@ -56,8 +56,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// MVC, Razor pages, Swagger, Validation
-// Use AddControllersWithViews so MVC views (cshtml) are served.
+// Enable MVC views and Razor Pages
 builder.Services.AddControllersWithViews().AddJsonOptions(opts => { opts.JsonSerializerOptions.PropertyNamingPolicy = null; });
 builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
@@ -85,23 +84,20 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles(); // enable serving Bootstrap, scripts, css from wwwroot
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Keep attribute-routed API controllers
+// API controllers (attribute routed)
 app.MapControllers();
 
-// Map controller routes and default route -> Topics page (root -> TopicsMvcController.Index)
-// If your controller class is named TopicsMvcController, default controller token is "TopicsMvc".
-// To route root "/" to Topics list, we set the default controller to "TopicsMvc".
+// Default MVC route — default controller is Topics (TopicsController)
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=TopicsMvc}/{action=Index}/{id?}"
+    pattern: "{controller=Topics}/{action=Index}/{id?}"
 );
 
-// If you also have Razor Pages, map them
 app.MapRazorPages();
 
 app.Run();

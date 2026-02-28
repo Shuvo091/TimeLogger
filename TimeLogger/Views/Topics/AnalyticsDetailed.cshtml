@@ -1,0 +1,162 @@
+﻿@model TimeLogger.Models.ViewModels.AnalyticsDetailedViewModel
+
+<style>
+  /* make chart containers responsive and constrained */
+  .chart-wrapper {
+    position: relative;
+    width: 100%;
+    height: 320px; /* adjust height as needed */
+    margin-bottom: 1rem;
+  }
+  /* for the multi-line trend we want more height */
+  .chart-wrapper--tall {
+    height: 420px;
+  }
+</style>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Detailed Analytics</h2>
+        <a class="btn btn-secondary" asp-action="Index">Back</a>
+    </div>
+
+    <div class="row gy-3">
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>Allocation % (Planned)</h5>
+                <div class="chart-wrapper">
+                    <canvas id="allocPie"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>Actual vs Planned (This Week)</h5>
+                <div class="chart-wrapper">
+                    <canvas id="barPlannedActual"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card p-3">
+                <h5>Trend (last @Model.TrendLabels.Length weeks)</h5>
+                <div class="chart-wrapper chart-wrapper--tall">
+                    <canvas id="multiLineTrend"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>Under-performing topics</h5>
+                @if (!Model.UnderPerforming.Any())
+                {
+                    <p class="text-muted">None</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var u in Model.UnderPerforming)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>@u.Name</strong><br />
+                                    <small class="text-muted">Planned: @u.Planned hrs • Actual: @u.Actual hrs</small>
+                                </div>
+                                <span class="badge bg-danger">@u.Efficiency %</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>Over-performing topics</h5>
+                @if (!Model.OverPerforming.Any())
+                {
+                    <p class="text-muted">None</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var o in Model.OverPerforming)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>@o.Name</strong><br />
+                                    <small class="text-muted">Planned: @o.Planned hrs • Actual: @o.Actual hrs</small>
+                                </div>
+                                <span class="badge bg-success">@o.Efficiency %</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const topicNames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopicNames));
+        const planned = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Planned));
+        const actual = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ActualThisWeek));
+        const trendLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TrendLabels));
+        const trendValuesPerTopic = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TrendValuesPerTopic));
+
+        // Shared options to force canvas to fit parent wrapper
+        const sharedOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' } },
+            animation: { duration: 400 }
+        };
+
+        // Allocation pie (planned)
+        new Chart(document.getElementById('allocPie'), {
+            type: 'pie',
+            data: {
+                labels: topicNames,
+                datasets: [{ data: planned, backgroundColor: topicNames.map((_, i) => `hsl(${i * 40 % 360} 70% 50%)`) }]
+            },
+            options: sharedOptions
+        });
+
+        // Bar planned vs actual
+        new Chart(document.getElementById('barPlannedActual'), {
+            type: 'bar',
+            data: {
+                labels: topicNames,
+                datasets: [
+                    { label: 'Planned (hrs)', data: planned, backgroundColor: '#60A5FA' },
+                    { label: 'Actual (hrs)', data: actual, backgroundColor: '#34D399' }
+                ]
+            },
+            options: Object.assign({}, sharedOptions, { scales: { y: { beginAtZero: true } } })
+        });
+
+        // Multi-line trend (one dataset per topic)
+        const datasets = [];
+        for (let i = 0; i < topicNames.length; i++) {
+            datasets.push({
+                label: topicNames[i],
+                data: trendValuesPerTopic[i] || [],
+                borderColor: `hsl(${i * 40 % 360} 70% 40%)`,
+                backgroundColor: `hsl(${i * 40 % 360} 70% 70%)`,
+                fill: false,
+                tension: 0.2,
+                pointRadius: 2
+            });
+        }
+
+        new Chart(document.getElementById('multiLineTrend'), {
+            type: 'line',
+            data: { labels: trendLabels, datasets: datasets },
+            options: Object.assign({}, sharedOptions, { scales: { y: { beginAtZero: true } } })
+        });
+    </script>
+}
