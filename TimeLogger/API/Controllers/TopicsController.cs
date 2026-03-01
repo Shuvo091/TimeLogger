@@ -3,11 +3,7 @@ using SkillAllocationTracker.Application.DTOs;
 using SkillAllocationTracker.Application.Interfaces;
 using SkillAllocationTracker.Application.Services;
 using SkillAllocationTracker.Domain.Entities;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 using TimeLogger.Models.ViewModels;
 
 namespace TimeLogger.API.Controllers
@@ -88,11 +84,17 @@ namespace TimeLogger.API.Controllers
             if (!ModelState.IsValid) return View("CreateEdit", model);
             try
             {
-                var dto = new TopicDto { Name = model.Name, Percentage = model.Percentage, Readiness = model.Readiness };
+                var dto = new TopicDto
+                {
+                    Name = model.Name,
+                    Percentage = model.Percentage,
+                    Readiness = model.Readiness,
+                    TotalTargetHoursAllTime = model.TotalTargetHoursAllTime
+                };
                 var created = await _topicService.CreateAsync(dto);
                 TempData["Success"] = "Topic created.";
 
-                // stay on the topic page in READ mode after create
+                // stay on the topic page (READ mode) after create
                 return RedirectToAction(nameof(Edit), new { id = created.Id });
             }
             catch (Exception ex)
@@ -107,8 +109,15 @@ namespace TimeLogger.API.Controllers
             var t = await _topicService.GetByIdAsync(id);
             if (t == null) return NotFound();
 
-            // populate topic base model including Readiness
-            var model = new CreateEditTopicModel { Id = t.Id, Name = t.Name, Percentage = t.Percentage, Readiness = t.Readiness };
+            // populate topic base model including Readiness and TotalTargetHoursAllTime
+            var model = new CreateEditTopicModel
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Percentage = t.Percentage,
+                Readiness = t.Readiness,
+                TotalTargetHoursAllTime = t.TotalTargetHoursAllTime
+            };
 
             // load timelogs for this topic
             var logs = (await _uow.TimeLogRepository.FindAsync(l => l.TopicId == id)).ToList();
@@ -131,6 +140,34 @@ namespace TimeLogger.API.Controllers
                 l.CreatedAt
             }).ToList();
 
+            // Compute all-time completed hours and weekly completed hours + targets
+            var completedAllMinutes = logs.Sum(l => l.DurationMinutes);
+            var completedAllHours = Math.Round(completedAllMinutes / 60.0, 2);
+
+            var ci = CultureInfo.InvariantCulture;
+            var calendar = ci.Calendar;
+            var rule = CalendarWeekRule.FirstFourDayWeek;
+            var currentWeek = calendar.GetWeekOfYear(DateTime.UtcNow, rule, _startDay);
+            var currentYear = DateTime.UtcNow.Year;
+
+            var minutesThisWeek = logs.Where(l =>
+            {
+                var w = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, _startDay);
+                return w == currentWeek && l.LogDate.ToLocalTime().Year == currentYear;
+            }).Sum(l => l.DurationMinutes);
+
+            var completedThisWeekHours = Math.Round(minutesThisWeek / 60.0, 2);
+
+            var weeklyConfig = (await _uow.WeeklyConfigRepository.GetAllAsync()).FirstOrDefault();
+            var totalWeeklyHours = weeklyConfig?.TotalWeeklyHours ?? 0;
+
+            var plannedThisWeek = Math.Round((t.Percentage / 100.0) * totalWeeklyHours, 2);
+
+            ViewBag.TargetAllHours = Math.Round(t.TotalTargetHoursAllTime, 2);
+            ViewBag.CompletedAllHours = completedAllHours;
+            ViewBag.TargetThisWeek = plannedThisWeek;
+            ViewBag.CompletedThisWeek = completedThisWeekHours;
+
             // allow view to enter explicit edit mode when requested (mode=edit) or via ViewBag
             ViewBag.EditMode = (mode ?? string.Empty).ToLowerInvariant() == "edit";
 
@@ -144,7 +181,13 @@ namespace TimeLogger.API.Controllers
             if (!ModelState.IsValid) return View("CreateEdit", model);
             try
             {
-                var dto = new TopicDto { Name = model.Name, Percentage = model.Percentage, Readiness = model.Readiness };
+                var dto = new TopicDto
+                {
+                    Name = model.Name,
+                    Percentage = model.Percentage,
+                    Readiness = model.Readiness,
+                    TotalTargetHoursAllTime = model.TotalTargetHoursAllTime
+                };
                 await _topicService.UpdateAsync(model.Id, dto);
                 TempData["Success"] = "Topic updated.";
 

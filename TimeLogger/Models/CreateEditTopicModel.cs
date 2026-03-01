@@ -19,5 +19,9 @@ namespace TimeLogger.Models.ViewModels
 
         [DataType(DataType.MultilineText)]
         public string Readiness { get; set; } = string.Empty;
+
+        [Display(Name = "Total target hours (all time)")]
+        [Range(0, double.MaxValue)]
+        public double TotalTargetHoursAllTime { get; set; } = 0.0;
     }
 }

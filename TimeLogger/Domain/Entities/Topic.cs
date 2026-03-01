@@ -6,14 +6,10 @@ namespace SkillAllocationTracker.Domain.Entities
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = null!;
-        // Percentage 1..100
         public int Percentage { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        // New: stored readiness markdown/plain-text
         public string Readiness { get; set; } = string.Empty;
-
-        // Computed property - not stored in DB
+        public double TotalTargetHoursAllTime { get; set; } = 0.0;
         public double CalculatedWeeklyHours(double totalWeeklyHours)
         {
             return Math.Round((Percentage / 100.0) * totalWeeklyHours, 2);

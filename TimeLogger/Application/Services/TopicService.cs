@@ -44,6 +44,7 @@ namespace SkillAllocationTracker.Application.Services
                 Name = dto.Name,
                 Percentage = dto.Percentage,
                 Readiness = dto.Readiness ?? string.Empty,
+                TotalTargetHoursAllTime = dto.TotalTargetHoursAllTime,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -93,6 +94,7 @@ namespace SkillAllocationTracker.Application.Services
             existing.Name = dto.Name;
             existing.Percentage = dto.Percentage;
             existing.Readiness = dto.Readiness ?? string.Empty;
+            existing.TotalTargetHoursAllTime = dto.TotalTargetHoursAllTime;
 
             _uow.TopicRepository.Update(existing);
             await _uow.SaveChangesAsync();

@@ -13,6 +13,12 @@
     {
         // default readiness is set server-side previously; keep in place if desired
     }
+
+    // Read-only metrics provided by controller
+    var targetAll = (ViewBag.TargetAllHours as double?) ?? 0.0;
+    var completedAll = (ViewBag.CompletedAllHours as double?) ?? 0.0;
+    var targetThisWeek = (ViewBag.TargetThisWeek as double?) ?? 0.0;
+    var completedThisWeek = (ViewBag.CompletedThisWeek as double?) ?? 0.0;
 }
 
 <div class="container py-4">
@@ -30,6 +36,25 @@
                     <h6>Readiness</h6>
                     <div class="border rounded p-3" style="white-space:pre-wrap;">
                         @Html.Raw(System.Net.WebUtility.HtmlEncode(Model.Readiness ?? string.Empty).Replace("\r\n", "\n").Replace("\n", "<br/>"))
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6>All-time progress</h6>
+                        <div class="border rounded p-3">
+                            <p class="mb-1"><strong>Target:</strong> @targetAll hours</p>
+                            <p class="mb-1"><strong>Completed:</strong> @completedAll hours</p>
+                            <p class="mb-0"><strong>Completion:</strong> @(targetAll == 0 ? "—" : (Math.Round((completedAll / targetAll) * 100, 2) + "%"))</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>This week</h6>
+                        <div class="border rounded p-3">
+                            <p class="mb-1"><strong>Target (this week):</strong> @targetThisWeek hours</p>
+                            <p class="mb-1"><strong>Completed (this week):</strong> @completedThisWeek hours</p>
+                            <p class="mb-0"><strong>Completion:</strong> @(targetThisWeek == 0 ? "—" : (Math.Round((completedThisWeek / targetThisWeek) * 100, 2) + "%"))</p>
+                        </div>
                     </div>
                 </div>
 
@@ -61,6 +86,13 @@
                 <input asp-for="Percentage" type="number" min="1" max="100" class="form-control" />
                 <span asp-validation-for="Percentage" class="text-danger"></span>
                 <div class="form-text">Total across topics must equal 100.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="TotalTargetHoursAllTime" class="form-label">Total target hours (all time)</label>
+                <input asp-for="TotalTargetHoursAllTime" type="number" step="0.25" min="0" class="form-control" />
+                <span asp-validation-for="TotalTargetHoursAllTime" class="text-danger"></span>
+                <div class="form-text">Used to calculate the per-topic all-time target: (Percentage / 100) * Total target hours (all time).</div>
             </div>
 
             <div class="mb-3">
