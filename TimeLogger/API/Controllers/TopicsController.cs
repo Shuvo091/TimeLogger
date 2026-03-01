@@ -16,11 +16,13 @@ namespace TimeLogger.API.Controllers
     {
         private readonly ITopicService _topicService;
         private readonly IUnitOfWork _uow;
+        private readonly DayOfWeek _startDay;
 
         public TopicsController(ITopicService topicService, IUnitOfWork uow)
         {
             _topicService = topicService;
             _uow = uow;
+            _startDay = DayOfWeek.Sunday;
         }
 
         public async Task<IActionResult> Index()
@@ -33,7 +35,7 @@ namespace TimeLogger.API.Controllers
             var ci = CultureInfo.InvariantCulture;
             var calendar = ci.Calendar;
             var rule = CalendarWeekRule.FirstFourDayWeek;
-            var currentWeek = calendar.GetWeekOfYear(DateTime.UtcNow, rule, DayOfWeek.Monday);
+            var currentWeek = calendar.GetWeekOfYear(DateTime.UtcNow, rule, _startDay);
             var currentYear = DateTime.UtcNow.Year;
 
             var models = new List<TopicViewModel>();
@@ -41,7 +43,7 @@ namespace TimeLogger.API.Controllers
             {
                 var minutesThisWeek = logs.Where(l =>
                 {
-                    var w = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, DayOfWeek.Monday);
+                    var w = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, _startDay);
                     return l.TopicId == t.Id && w == currentWeek && l.LogDate.ToLocalTime().Year == currentYear;
                 }).Sum(l => l.DurationMinutes);
 
@@ -287,11 +289,11 @@ namespace TimeLogger.API.Controllers
             var ci = CultureInfo.InvariantCulture;
             var calendar = ci.Calendar;
             var rule = CalendarWeekRule.FirstFourDayWeek;
-            var weekNum = calendar.GetWeekOfYear(DateTime.UtcNow, rule, DayOfWeek.Monday);
+            var weekNum = calendar.GetWeekOfYear(DateTime.UtcNow, rule, _startDay);
 
             var thisWeekLogs = logs.Where(l =>
             {
-                var w = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, DayOfWeek.Monday);
+                var w = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, _startDay);
                 return w == weekNum && l.LogDate.ToLocalTime().Year == DateTime.Now.Year;
             }).ToList();
 
@@ -334,7 +336,7 @@ namespace TimeLogger.API.Controllers
             var ci = CultureInfo.InvariantCulture;
             var calendar = ci.Calendar;
             var rule = CalendarWeekRule.FirstFourDayWeek;
-            var currentWeek = calendar.GetWeekOfYear(DateTime.UtcNow, rule, DayOfWeek.Monday);
+            var currentWeek = calendar.GetWeekOfYear(DateTime.UtcNow, rule, _startDay);
             var currentYear = DateTime.UtcNow.Year;
 
             var topicNames = topics.Select(t => t.Name).ToArray();
@@ -344,7 +346,7 @@ namespace TimeLogger.API.Controllers
             {
                 var minutes = logs.Where(l =>
                 {
-                    var w = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, DayOfWeek.Monday);
+                    var w = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, _startDay);
                     return l.TopicId == t.Id && w == currentWeek && l.LogDate.ToLocalTime().Year == currentYear;
                 }).Sum(l => l.DurationMinutes);
                 return Math.Round(minutes / 60.0, 2);
@@ -366,7 +368,7 @@ namespace TimeLogger.API.Controllers
             var weeks = Enumerable.Range(0, 8).Select(i =>
             {
                 var dt = DateTime.UtcNow.AddDays(-7 * i);
-                var w = calendar.GetWeekOfYear(dt, rule, DayOfWeek.Monday);
+                var w = calendar.GetWeekOfYear(dt, rule, _startDay);
                 var y = dt.Year;
                 return (WeekNum: w, Year: y, Label: $"W{w}");
             }).Reverse().ToArray();
@@ -380,7 +382,7 @@ namespace TimeLogger.API.Controllers
                 {
                     var minutes = logs.Where(l =>
                     {
-                        var lw = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, DayOfWeek.Monday);
+                        var lw = calendar.GetWeekOfYear(l.LogDate.ToLocalTime(), rule, _startDay);
                         return l.TopicId == t.Id && lw == w.WeekNum && l.LogDate.ToLocalTime().Year == w.Year;
                     }).Sum(l => l.DurationMinutes);
                     return Math.Round(minutes / 60.0, 2);
