@@ -7,5 +7,8 @@ namespace SkillAllocationTracker.Application.DTOs
         public Guid Id { get; set; }
         public string Name { get; set; } = null!;
         public int Percentage { get; set; }
+
+        // New: carry Readiness between UI and service layer
+        public string Readiness { get; set; } = string.Empty;
     }
 }

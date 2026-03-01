@@ -10,6 +10,9 @@ namespace SkillAllocationTracker.Domain.Entities
         public int Percentage { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        // New: stored readiness markdown/plain-text
+        public string Readiness { get; set; } = string.Empty;
+
         // Computed property - not stored in DB
         public double CalculatedWeeklyHours(double totalWeeklyHours)
         {

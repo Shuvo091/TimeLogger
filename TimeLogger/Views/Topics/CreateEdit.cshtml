@@ -1,35 +1,91 @@
-@model TimeLogger.Models.ViewModels.CreateEditTopicModel
+﻿@model TimeLogger.Models.ViewModels.CreateEditTopicModel
 @{
-    var isEdit = Model?.Id != Guid.Empty;
-    ViewData["Title"] = isEdit ? "Edit Topic" : "Create Topic";
+    var isNew = Model?.Id == Guid.Empty;
+    var modeQuery = (Context.Request.Query["mode"].ToString() ?? string.Empty).ToLowerInvariant();
+    // allow controller to explicitly ask for edit (ViewBag.EditMode), or fallback to ?mode=edit
+    var editFromController = (ViewBag.EditMode as bool?) == true;
+    var isEditMode = !isNew && (editFromController || modeQuery == "edit");
+    var isReadMode = !isNew && !isEditMode;
+    ViewData["Title"] = isNew ? "Create Topic" : (isEditMode ? "Edit Topic" : "Topic");
     var timeLogRows = ViewBag.TimeLogRows as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+
+    if (isNew && string.IsNullOrWhiteSpace(Model?.Readiness))
+    {
+        // default readiness is set server-side previously; keep in place if desired
+    }
 }
 
 <div class="container py-4">
     <h2>@ViewData["Title"]</h2>
 
-    <form method="post" asp-action="@(isEdit ? "Edit" : "Create")">
-        @if (isEdit)
-        {
-            <input type="hidden" asp-for="Id" />
-        }
-        <div class="mb-3">
-            <label asp-for="Name" class="form-label"></label>
-            <input asp-for="Name" class="form-control" />
-            <span asp-validation-for="Name" class="text-danger"></span>
-        </div>
-        <div class="mb-3">
-            <label asp-for="Percentage" class="form-label"></label>
-            <input asp-for="Percentage" type="number" min="1" max="100" class="form-control" />
-            <span asp-validation-for="Percentage" class="text-danger"></span>
-            <div class="form-text">Total across topics must equal 100.</div>
-        </div>
+    @* READ MODE: existing topic, display values in a readable card with Update button *@
+    @if (isReadMode)
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <h4 class="card-title">@Model.Name</h4>
+                <p class="mb-1"><strong>Allocation:</strong> @Model.Percentage% </p>
 
-        <button class="btn btn-primary">Save</button>
-        <a class="btn btn-secondary" asp-action="Index">Cancel</a>
-    </form>
+                <div class="mt-3">
+                    <h6>Readiness</h6>
+                    <div class="border rounded p-3" style="white-space:pre-wrap;">
+                        @Html.Raw(System.Net.WebUtility.HtmlEncode(Model.Readiness ?? string.Empty).Replace("\r\n", "\n").Replace("\n", "<br/>"))
+                    </div>
+                </div>
 
-    @if (isEdit)
+                <div class="mt-3">
+                    <a class="btn btn-primary" href="@Url.Action("Edit", "Topics", new { id = Model.Id, mode = "edit" })">Update</a>
+                    <a class="btn btn-secondary" asp-action="Index">Back</a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* CREATE or EDIT MODE: show form inputs. In create mode -> action Create; in edit mode -> action Edit *@
+    @if (isNew || isEditMode)
+    {
+        <form method="post" asp-action="@(isNew ? "Create" : "Edit")" class="mb-4">
+            @if (!isNew)
+            {
+                <input type="hidden" asp-for="Id" />
+            }
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Percentage" class="form-label"></label>
+                <input asp-for="Percentage" type="number" min="1" max="100" class="form-control" />
+                <span asp-validation-for="Percentage" class="text-danger"></span>
+                <div class="form-text">Total across topics must equal 100.</div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Readiness" class="form-label">Readiness (editable, markdown/plain text)</label>
+                <textarea asp-for="Readiness" class="form-control" rows="12">@Model.Readiness</textarea>
+                <span asp-validation-for="Readiness" class="text-danger"></span>
+                <div class="form-text">Use markdown or plain text. This content is stored per-topic and editable here.</div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary">@((isNew) ? "Create" : "Save")</button>
+                @if (isNew)
+                {
+                    <a class="btn btn-secondary" asp-action="Index">Cancel</a>
+                }
+                else
+                {
+                    <a class="btn btn-outline-secondary" href="@Url.Action("Edit", "Topics", new { id = Model.Id })">Cancel</a>
+                }
+            </div>
+        </form>
+    }
+
+    @* Time logs: only visible for persisted topics (not in create mode) - same table as before *@
+    @if (!isNew)
     {
         <hr />
         <h4 class="mt-4">Time logs</h4>
@@ -102,8 +158,6 @@
                     $('#editTimeLogModal .modal-body').html('<div class="text-danger">Failed to load.</div>');
                 });
             });
-
-            // optional: after modal form submit the server will redirect to Edit action
         });
     </script>
 }

@@ -88,10 +88,12 @@ namespace TimeLogger.API.Controllers
             if (!ModelState.IsValid) return View("CreateEdit", model);
             try
             {
-                var dto = new TopicDto { Name = model.Name, Percentage = model.Percentage };
-                await _topicService.CreateAsync(dto);
+                var dto = new TopicDto { Name = model.Name, Percentage = model.Percentage, Readiness = model.Readiness };
+                var created = await _topicService.CreateAsync(dto);
                 TempData["Success"] = "Topic created.";
-                return RedirectToAction(nameof(Index));
+
+                // stay on the topic page in READ mode after create
+                return RedirectToAction(nameof(Edit), new { id = created.Id });
             }
             catch (Exception ex)
             {
@@ -100,13 +102,13 @@ namespace TimeLogger.API.Controllers
             }
         }
 
-        public async Task<IActionResult> Edit(Guid id)
+        public async Task<IActionResult> Edit(Guid id, string? mode)
         {
             var t = await _topicService.GetByIdAsync(id);
             if (t == null) return NotFound();
 
-            // populate topic base model
-            var model = new CreateEditTopicModel { Id = t.Id, Name = t.Name, Percentage = t.Percentage };
+            // populate topic base model including Readiness
+            var model = new CreateEditTopicModel { Id = t.Id, Name = t.Name, Percentage = t.Percentage, Readiness = t.Readiness };
 
             // load timelogs for this topic
             var logs = (await _uow.TimeLogRepository.FindAsync(l => l.TopicId == id)).ToList();
@@ -117,11 +119,8 @@ namespace TimeLogger.API.Controllers
                 DurationMinutes = l.DurationMinutes,
                 Note = l.Note,
                 LogDate = l.LogDate.ToLocalTime(),
-                // include Id in a hidden property via dynamic binding -- TimeLogViewModel doesn't have Id property; add via ViewData or create new model if needed
             }).ToList();
 
-            // If you need the log Id on actions, we will use a small anonymous list for the view.
-            // For convenience pass a list of simple objects to the ViewBag containing Id and fields.
             ViewBag.TimeLogRows = logs.Select(l => new
             {
                 l.Id,
@@ -131,6 +130,9 @@ namespace TimeLogger.API.Controllers
                 l.TopicId,
                 l.CreatedAt
             }).ToList();
+
+            // allow view to enter explicit edit mode when requested (mode=edit) or via ViewBag
+            ViewBag.EditMode = (mode ?? string.Empty).ToLowerInvariant() == "edit";
 
             return View("CreateEdit", model);
         }
@@ -142,10 +144,12 @@ namespace TimeLogger.API.Controllers
             if (!ModelState.IsValid) return View("CreateEdit", model);
             try
             {
-                var dto = new TopicDto { Name = model.Name, Percentage = model.Percentage };
+                var dto = new TopicDto { Name = model.Name, Percentage = model.Percentage, Readiness = model.Readiness };
                 await _topicService.UpdateAsync(model.Id, dto);
                 TempData["Success"] = "Topic updated.";
-                return RedirectToAction(nameof(Index));
+
+                // stay on the topic page (READ mode) after save
+                return RedirectToAction(nameof(Edit), new { id = model.Id });
             }
             catch (Exception ex)
             {

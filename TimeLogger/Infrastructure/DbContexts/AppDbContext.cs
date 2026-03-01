@@ -21,6 +21,7 @@ namespace SkillAllocationTracker.Infrastructure.DbContexts
                 b.Property(t => t.Name).HasMaxLength(200).IsRequired();
                 b.HasIndex(t => t.Name).IsUnique();
                 b.Property(t => t.Percentage).IsRequired();
+                b.Property(t => t.Readiness).HasColumnType("nvarchar(max)");
             });
 
             modelBuilder.Entity<WeeklyConfig>(b =>

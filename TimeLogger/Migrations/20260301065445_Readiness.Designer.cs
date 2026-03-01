@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SkillAllocationTracker.Infrastructure.DbContexts;
 
@@ -11,9 +12,11 @@ using SkillAllocationTracker.Infrastructure.DbContexts;
 namespace TimeLogger.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260301065445_Readiness")]
+    partial class Readiness
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -50,7 +53,7 @@ namespace TimeLogger.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Notes", (string)null);
+                    b.ToTable("Notes");
                 });
 
             modelBuilder.Entity("SkillAllocationTracker.Domain.Entities.TimeLog", b =>
@@ -78,7 +81,7 @@ namespace TimeLogger.Migrations
 
                     b.HasIndex("TopicId");
 
-                    b.ToTable("TimeLogs", (string)null);
+                    b.ToTable("TimeLogs");
                 });
 
             modelBuilder.Entity("SkillAllocationTracker.Domain.Entities.Topic", b =>
@@ -107,7 +110,7 @@ namespace TimeLogger.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Topics", (string)null);
+                    b.ToTable("Topics");
                 });
 
             modelBuilder.Entity("SkillAllocationTracker.Domain.Entities.WeeklyConfig", b =>
@@ -124,7 +127,7 @@ namespace TimeLogger.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WeeklyConfigs", (string)null);
+                    b.ToTable("WeeklyConfigs");
                 });
 
             modelBuilder.Entity("SkillAllocationTracker.Domain.Entities.TimeLog", b =>

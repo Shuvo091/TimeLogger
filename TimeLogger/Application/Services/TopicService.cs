@@ -43,6 +43,7 @@ namespace SkillAllocationTracker.Application.Services
                 Id = Guid.NewGuid(),
                 Name = dto.Name,
                 Percentage = dto.Percentage,
+                Readiness = dto.Readiness ?? string.Empty,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -62,12 +63,10 @@ namespace SkillAllocationTracker.Application.Services
 
         private async Task EnsureAfterDeletePercentageConstraint(Topic removing)
         {
-            // After removing, the remaining should sum to 100? Typically deletion requires reallocation.
             var topics = (await _uow.TopicRepository.GetAllAsync()).ToList();
             var sumRemaining = topics.Sum(t => t.Percentage) - removing.Percentage;
             if (sumRemaining != 100 && topics.Count > 1)
             {
-                // You may prefer to allow deletion and require client to adjust; here we block to enforce sum=100
                 throw new InvalidOperationException("Deleting this topic would cause total percentage != 100. Adjust allocations first.");
             }
         }
@@ -93,6 +92,8 @@ namespace SkillAllocationTracker.Application.Services
 
             existing.Name = dto.Name;
             existing.Percentage = dto.Percentage;
+            existing.Readiness = dto.Readiness ?? string.Empty;
+
             _uow.TopicRepository.Update(existing);
             await _uow.SaveChangesAsync();
             return existing;

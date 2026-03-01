@@ -16,5 +16,8 @@ namespace TimeLogger.Models.ViewModels
         public int Percentage { get; set; }
 
         public IEnumerable<TimeLogViewModel>? TimeLogs { get; set; }
+
+        [DataType(DataType.MultilineText)]
+        public string Readiness { get; set; } = string.Empty;
     }
 }
