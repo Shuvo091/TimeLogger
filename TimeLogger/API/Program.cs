@@ -26,7 +26,7 @@ builder.Host.UseSerilog();
 
 // Configuration
 var configuration = builder.Configuration;
-var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Server=(localdb)\\mssqllocaldb;Database=SkillAllocDb;Trusted_Connection=True;";
+var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost;Database=SkillAlocDb;Trusted_Connection=True;TrustServerCertificate=True;";
 
 // EF Core
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString));
