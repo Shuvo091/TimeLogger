@@ -9,7 +9,7 @@
 
     <div class="mb-3">
         <label class="form-label">Log Date</label>
-        <input name="LogDate" type="datetime-local" class="form-control" value="@(Model.LogDate.ToString("yyyy-MM-ddTHH:mm"))" />
+        <input name="LogDate" type="datetime-local" class="form-control" value="@(Model.LogDate.ToLocalTime().ToString("yyyy-MM-ddTHH:mm"))" />
     </div>
 
     <div class="mb-3">

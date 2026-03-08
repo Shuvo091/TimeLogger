@@ -9,6 +9,32 @@
     ViewData["Title"] = isNew ? "Create Topic" : (isEditMode ? "Edit Topic" : "Topic");
     var timeLogRows = ViewBag.TimeLogRows as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
 
+    // helper to format date with ordinal (e.g. 12th Mar, 2025 1:30PM)
+    string OrdinalSuffix(int day)
+    {
+        if (day >= 11 && day <= 13) return "th";
+        switch (day % 10)
+        {
+            case 1: return "st";
+            case 2: return "nd";
+            case 3: return "rd";
+            default: return "th";
+        }
+    }
+
+    string FormatLogDate(object raw)
+    {
+        if (raw == null) return string.Empty;
+        DateTime dt;
+        var s = raw as string ?? raw.ToString();
+        if (!DateTime.TryParse(s, out dt))
+        {
+            return s;
+        }
+        var suf = OrdinalSuffix(dt.Day);
+        return $"{dt.Day}{suf} {dt:MMM}, {dt:yyyy} {dt:h:mmtt}";
+    }
+
     if (isNew && string.IsNullOrWhiteSpace(Model?.Readiness))
     {
         // default readiness is set server-side previously; keep in place if desired
@@ -34,7 +60,7 @@
 
                 <div class="mt-3">
                     <h6>Readiness</h6>
-                    <div class="border rounded p-3" style="white-space:pre-wrap;">
+                    <div class="border rounded p-3" style="white-space:pre-wrap; max-height:320px; overflow-y:auto;">
                         @Html.Raw(System.Net.WebUtility.HtmlEncode(Model.Readiness ?? string.Empty).Replace("\r\n", "\n").Replace("\n", "<br/>"))
                     </div>
                 </div>
@@ -129,23 +155,23 @@
         <table class="table table-sm table-bordered">
             <thead>
                 <tr>
-                    <th>Log Date</th>
-                    <th>Duration (min)</th>
+                    <th style="width:260px;">Log Date</th>
+                    <th style="width:140px;">Duration (min)</th>
                     <th>Note</th>
-                    <th>Actions</th>
+                    <th style="width:180px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var r in timeLogRows)
                 {
                     <tr>
-                        <td>@r.LogDateLocal</td>
-                        <td>@r.DurationMinutes</td>
+                        <td style="width:260px;">@Html.Raw(FormatLogDate(r.LogDateLocal ?? r.LogDate))</td>
+                        <td style="width:140px;">@r.DurationMinutes</td>
                         <td>@r.Note</td>
-                        <td>
+                        <td style="width:180px; white-space:nowrap;">
                             <button class="btn btn-sm btn-outline-primary edit-log" data-url="@Url.Action("EditTimeLog", "Topics", new { id = r.Id })">Edit</button>
 
-                            <form method="post" asp-action="DeleteTimeLog" class="d-inline">
+                            <form method="post" asp-action="DeleteTimeLog" class="d-inline ms-1">
                                 <input type="hidden" name="id" value="@r.Id" />
                                 <input type="hidden" name="topicId" value="@r.TopicId" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this time log?');">Delete</button>
@@ -155,6 +181,26 @@
                 }
             </tbody>
         </table>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Time logs chart</h5>
+                <p class="card-text">Each bar is the sum of durations (minutes) for a date. Use the range selector to filter the time window. The red dashed line is this topic's target per day (in minutes).</p>
+
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <label for="timeRange" class="mb-0">Range:</label>
+                    <select id="timeRange" class="form-select form-select-sm" style="width:220px;">
+                        <option value="all">All time</option>
+                        <option value="1w">Last week</option>
+                        <option value="4w">Last 4 weeks</option>
+                        <option value="6m">Last 6 months</option>
+                        <option value="1y">This year</option>
+                    </select>
+                </div>
+
+                <canvas id="timelogChart" height="100"></canvas>
+            </div>
+        </div>
     }
 
 </div>
@@ -174,6 +220,15 @@
     </div>
 </div>
 
+@{
+    // prepare chart data for client-side
+    var chartDataForJs = timeLogRows.Select(r => new {
+        Date = (r.LogDateLocal as string) ?? (r.LogDate as string) ?? string.Empty,
+        Duration = (r.DurationMinutes is int) ? Convert.ToDouble(r.DurationMinutes) : ((double?)r.DurationMinutes ?? 0.0)
+    }).ToList();
+    var targetMinutes = targetThisWeek * 60.0 / 7;
+}
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -189,6 +244,129 @@
                 }).fail(function () {
                     $('#editTimeLogModal .modal-body').html('<div class="text-danger">Failed to load.</div>');
                 });
+            });
+
+            // prepare data from server
+            var rawData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartDataForJs));
+            var target = Number(@targetMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            function toDateOnlyString(input) {
+                var d = new Date(input);
+                if (isNaN(d)) return null;
+                var yyyy = d.getFullYear();
+                var mm = (d.getMonth() + 1).toString().padStart(2, '0');
+                var dd = d.getDate().toString().padStart(2, '0');
+                return yyyy + '-' + mm + '-' + dd;
+            }
+
+            // aggregate durations by date (date-only)
+            function aggregateByDate(data) {
+                var totals = {};
+                data.forEach(function (it) {
+                    var ds = toDateOnlyString(it.Date);
+                    if (!ds) return;
+                    var val = Number(it.Duration) || 0;
+                    totals[ds] = (totals[ds] || 0) + val;
+                });
+                return totals;
+            }
+
+            var aggregated = aggregateByDate(rawData);
+
+            // produce sorted date keys
+            function sortedKeys(totals) {
+                return Object.keys(totals).sort(function (a, b) { return new Date(a) - new Date(b); });
+            }
+
+            // build inclusive date range array (yyyy-MM-dd)
+            function buildDateRange(startStr, endStr) {
+                var start = new Date(startStr);
+                var end = new Date(endStr);
+                var out = [];
+                if (isNaN(start) || isNaN(end)) return out;
+                for (var d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    var yyyy = d.getFullYear();
+                    var mm = (d.getMonth() + 1).toString().padStart(2, '0');
+                    var dd = d.getDate().toString().padStart(2, '0');
+                    out.push(yyyy + '-' + mm + '-' + dd);
+                }
+                return out;
+            }
+
+            // get keys for a selected range and fill gaps with 0s
+            function getKeysForRange(range) {
+                var dataKeys = sortedKeys(aggregated);
+                if (dataKeys.length === 0) return [];
+                var minDate = dataKeys[0];
+                var maxDate = dataKeys[dataKeys.length - 1];
+
+                if (!range || range === 'all') {
+                    return buildDateRange(minDate, maxDate);
+                }
+
+                var cutoff = new Date();
+                if (range === '1w') cutoff.setDate(cutoff.getDate() - 7);
+                else if (range === '4w') cutoff.setDate(cutoff.getDate() - 28);
+                else if (range === '6m') cutoff.setMonth(cutoff.getMonth() - 6);
+                else if (range === '1y') cutoff.setFullYear(cutoff.getFullYear() - 1);
+
+                // determine start as later of cutoff and minDate
+                var start = new Date(minDate) > cutoff ? minDate : (new Date(cutoff) < new Date(maxDate) ? cutoff.toISOString().slice(0,10) : minDate);
+                // if cutoff is after maxDate, return empty
+                if (new Date(start) > new Date(maxDate)) return [];
+
+                return buildDateRange(start, maxDate);
+            }
+
+            // initial labels/data (fill gaps)
+            var allKeys = getKeysForRange('all');
+
+            var ctx = document.getElementById('timelogChart').getContext('2d');
+            var timelogChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: allKeys,
+                    datasets: [{
+                        label: 'Duration (min)',
+                        data: allKeys.map(function (k) { return aggregated[k] || 0; }),
+                        backgroundColor: 'rgba(54,162,235,0.6)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Date' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Duration (minutes)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        annotation: {
+                            annotations: {
+                                targetLine: {
+                                    type: 'line',
+                                    yMin: target,
+                                    yMax: target,
+                                    borderColor: 'rgba(255,99,132,0.9)',
+                                    borderWidth: 2,
+                                    borderDash: [6, 6]
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // handle range changes
+            $('#timeRange').on('change', function () {
+                var range = $(this).val();
+                var keys = getKeysForRange(range);
+                timelogChart.data.labels = keys;
+                timelogChart.data.datasets[0].data = keys.map(function (k) { return aggregated[k] || 0; });
+                timelogChart.update();
             });
         });
     </script>
