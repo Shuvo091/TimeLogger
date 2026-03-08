@@ -120,7 +120,7 @@ namespace TimeLogger.API.Controllers
             };
 
             // load timelogs for this topic
-            var logs = (await _uow.TimeLogRepository.FindAsync(l => l.TopicId == id)).ToList();
+            var logs = (await _uow.TimeLogRepository.FindAsync(l => l.TopicId == id)).OrderByDescending(t => t.LogDate).ThenByDescending(t => t.CreatedAt).ToList();
 
             model.TimeLogs = logs.Select(l => new TimeLogViewModel
             {
